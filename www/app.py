@@ -1,5 +1,9 @@
-import json
 import logging;
+
+from config import configs
+
+logging.basicConfig(level=logging.DEBUG)
+import json
 import os
 import time
 from datetime import datetime
@@ -8,9 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 
 import orm
 from coroweb import add_routes, add_static
-from www.handlers import COOKIE_NAME, cookie2user
-
-logging.basicConfig(level=logging.DEBUG)
+from handlers import COOKIE_NAME, cookie2user
 
 import asyncio
 from aiohttp import web
@@ -50,7 +52,7 @@ async def logger_factory(app, handler):
     async def logger(request):
         logging.info('Request: %s %s' % (request.method, request.path))
         # await asyncio.sleep(0.3)
-        return (await handler(request))
+        return await handler(request)
 
     return logger
 
@@ -66,6 +68,7 @@ async def auth_factory(app, handler):
                 logging.info('set current user: %s' % user.email)
                 request.__user__ = user
         if request.path.startswith('/manage/') and (request.__user__ is None or not request.__user__.admin):
+            logging.info('no user to vistor /manage ')
             return web.HTTPFound('/signin')
         return await handler(request)
 
@@ -145,11 +148,14 @@ async def init(loop):
     # app = web.Application(loop=loop)
     # app.router.add_route('GET', '/', index)
     # app.router.add_route('GET', '/', main)
-    print('===init(loop)====')
-    await orm.create_pool(loop=loop, host='127.0.0.1', port=3306, user='root', password='root1234', db='py_test')
+    print('===print init(loop)====')
+    logging.info('===print init(loop)====')
+
+    # await orm.create_pool(loop=loop, host='127.0.0.1', port=3306, user='root', password='root1234', db='py_test')
+    await orm.create_pool(loop=loop, **configs.db)
 
     app = web.Application(middlewares=[
-        logger_factory, response_factory
+        logger_factory, auth_factory, response_factory
     ])
     init_jinja2(app, filters=dict(datetime=datetime_filter))
     add_routes(app, 'handlers')
@@ -158,8 +164,8 @@ async def init(loop):
     # DeprecationWarning: Application.make_handler(...) is deprecated, use AppRunner API instead
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '127.0.0.1', 9000)
-    logging.info('server started at http://127.0.0.1:9000...')
+    site = web.TCPSite(runner, '127.0.0.1', configs.get('port', 9000))
+    logging.info('server started at http://127.0.0.1:%s...' % configs.get('port', 9000))
     await site.start()
 
     # 以前的写法
@@ -168,6 +174,7 @@ async def init(loop):
     # return srv
 
 
+logging.info('===start======')
 loop = asyncio.get_event_loop()
 loop.run_until_complete(init(loop))
 loop.run_forever()

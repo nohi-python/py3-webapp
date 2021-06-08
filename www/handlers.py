@@ -8,19 +8,28 @@ import time
 
 from aiohttp import web
 
-from apis import APIValueError, APIError
+from apis import APIValueError, APIError, Page
 from coroweb import get, post
 from models import User, Blog, next_id
 
 __author__ = 'Michael Liao'
 
-from www.config import configs
+from config import configs
 
 ' url handlers '
 
 COOKIE_NAME = 'awesession'
 _COOKIE_KEY = configs.session.secret
 
+def get_page_index(page_str):
+    p = 1
+    try:
+        p = int(page_str)
+    except ValueError as e:
+        pass
+    if p < 1:
+        p = 1
+    return p
 
 def user2cookie(user, max_age):
     '''
@@ -166,3 +175,79 @@ async def authenticate(*, email, passwd):
     r.content_type = 'application/json'
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
+
+
+@get('/manage/blog/create')
+def to_create_blog():
+    return {
+        'action': '/api/blog',
+        '__template__': 'manage_blog_edit.html'
+    }
+
+
+@get('/api/blog/{id}')
+async def apiblog(request, *, id):
+    user = request.__user__
+    logging.debug('apiblog, id=%s' % id)
+    blog = await Blog.findAll('id=?', [id])
+    return blog
+    # r = web.Response()
+    # r.set_cookie(COOKIE_NAME, user2cookie(user, 86400), max_age=86400, httponly=True)
+    # user.passwd = '******'
+    # r.content_type = 'application/json'
+    # r.body = json.dumps(blog, ensure_ascii=False).encode('utf-8')
+    # return r
+
+
+@post('/api/blog')
+async def api_create_blog(request, *, name, summary, content):
+    print('request.__user__.id %s' % request.__user__.id)
+    if not name or not name.strip():
+        raise APIValueError(name, '标题不能为空')
+    if not summary or not summary.strip():
+        raise APIValueError(summary, 'summary不能为空')
+    if not content or not content.strip():
+        raise APIValueError(content, 'content不能为空')
+
+    # id = StringField(primary_key=True, default=next_id, ddl='varchar(50)')
+    # user_id = StringField(ddl='varchar(50)')
+    # user_name = StringField(ddl='varchar(50)')
+    # user_image = StringField(ddl='varchar(500)')
+    # name = StringField(ddl='varchar(50)')
+    # summary = StringField(ddl='varchar(200)')
+    # content = TextField()
+    # created_at = FloatField(default=time.time)
+    cookie_str = request.cookies.get(COOKIE_NAME)
+    if cookie_str:
+        user = await cookie2user(cookie_str)
+        if user:
+            logging.info('set current user: %s' % user.email)
+            request.__user__ = user
+    id = next_id()
+    blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image
+                , name=name.strip(), summary=summary.strip(), content=content.strip())
+    await blog.save()
+    return blog
+    # return {
+    #         '__template__': 'manage_blogs.html',
+    #         'page_index': get_page_index('1')
+    #     }
+
+
+@get('/manage/blogs')
+def manage_blogs(*, page='1'):
+    return {
+        '__template__': 'manage_blogs.html',
+        'page_index': get_page_index(page)
+    }
+
+
+@get('/api/blogs')
+async def api_blogs(*, page='1'):
+    page_index = get_page_index(page)
+    num = await Blog.findNumber('count(id)')
+    p = Page(num, page_index)
+    if num == 0:
+        return dict(page=p, blogs=())
+    blogs = await Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=p, blogs=blogs)
