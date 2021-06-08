@@ -235,10 +235,12 @@ async def api_create_blog(request, *, name, summary, content):
 
 
 @get('/manage/blogs')
-def manage_blogs(*, page='1'):
+def manage_blogs(request, *, page='1'):
+    user = request.__user__
     return {
         '__template__': 'manage_blogs.html',
-        'page_index': get_page_index(page)
+        'page_index': get_page_index(page),
+        'abc': 'manage_blogs.abc'
     }
 
 
