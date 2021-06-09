@@ -3,10 +3,10 @@
 configs = {
     'port': 9009,
     'db': {
-        'host': '139.224.41.4',
+        'host': '139.224.41.44',
         'port': 3306,
         'user': 'root',
-        'password': 'nohi1234',
+        'password': 'root1234',
         'database': 'py_test'
     },
     'session': {

@@ -17,10 +17,10 @@ from fabric.api import *
 
 env.user = 'www'
 env.sudo_user = 'root'
-env.hosts = ['139.224.41.4']
+env.hosts = ['139.224.41.44']
 
 db_user = 'root'
-db_password = 'root1234'
+db_password = 'root43211234'
 
 _TAR_FILE = 'dist-py3-web.tar.gz'
 
@@ -74,8 +74,8 @@ def deploy():
         # sudo('chown www-data:www-data www')
         # sudo('chown -R www-data:www-data %s' % newdir)
     with settings(warn_only=True):
-        sudo('supervisorctl stop py3-web')
-        sudo('supervisorctl start py3-web')
+        sudo('supervisorctl stop py3')
+        sudo('supervisorctl start py3')
         sudo('/usr/sbin/nginx reload')
 
 RE_FILES = re.compile('\r?\n')
