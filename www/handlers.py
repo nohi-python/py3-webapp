@@ -21,6 +21,7 @@ from config import configs
 COOKIE_NAME = 'awesession'
 _COOKIE_KEY = configs.session.secret
 
+
 def get_page_index(page_str):
     p = 1
     try:
@@ -30,6 +31,7 @@ def get_page_index(page_str):
     if p < 1:
         p = 1
     return p
+
 
 def user2cookie(user, max_age):
     '''
